@@ -1,11 +1,7 @@
 import Fastify from "fastify";
 
 const app = Fastify({
-  logger: {
-    transport: {
-      target: "pino-pretty",
-    },
-  },
+  logger: true
 });
 
 app.get("/", async (req, reply) => {
