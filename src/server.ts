@@ -1,7 +1,17 @@
 import Fastify from "fastify";
 
+const isDev = process.env.NODE_ENV !== 'production' 
+
 const app = Fastify({
-  logger: true
+  logger: isDev ? {
+    transport: {
+      target: 'pino-pretty',
+      options: {
+        translateTime: 'HH:MM:ss',
+        ignore: 'pid, hostname'
+      }
+    }
+  }: true
 });
 
 app.get("/", async (req, reply) => {
@@ -13,5 +23,4 @@ app.listen({ port: 3000, host: "0.0.0.0" }, (err, adress) => {
     app.log.error(err);
     process.exit(1);
   }
-  app.log.info(`server listening on ${adress}`);
 });
