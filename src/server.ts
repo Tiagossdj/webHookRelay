@@ -1,26 +1,10 @@
-import Fastify from "fastify";
+import { app } from "./app.js";
+import { env } from "./config/env.js";
 
-const isDev = process.env.NODE_ENV !== 'production' 
-
-const app = Fastify({
-  logger: isDev ? {
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        translateTime: 'HH:MM:ss',
-        ignore: 'pid, hostname'
-      }
-    }
-  }: true
-});
-
-app.get("/", async (req, reply) => {
-  reply.send({ status: "ok" });
-});
-
-app.listen({ port: 3000, host: "0.0.0.0" }, (err, adress) => {
+app.listen(env.PORT, "0.0.0.0", (err) => {
   if (err) {
-    app.log.error(err);
+    console.error(err);
     process.exit(1);
   }
+  console.log(`Server listening on http://0.0.0.0:${env.PORT}`);
 });
