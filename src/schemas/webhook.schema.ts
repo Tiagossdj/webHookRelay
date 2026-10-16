@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 export const createWebhookBody = z.object({
     url: z.url(),
-    payload: z.unknown()
+    payload: z.looseObject({})
 })
 
 export const createWebhookHeaders = z.object({
