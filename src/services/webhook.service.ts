@@ -12,11 +12,24 @@ export class WebhookService {
       input.idempotencyKey,
     );
     if (existing) {
-      return { webhook: existing, created: false };
+
+      if (input.url === existing.url_destiny) {
+        if (
+          JSON.stringify(input.payload) === JSON.stringify(existing.payload)
+        ) {
+          return { webhook: existing, created: false, conflict: false };
+        }
+      }
+
+      return {
+        webhook: existing,
+        created: false,
+        conflict: true,
+      };
     }
 
     const newWebhook = await WebhookRepository.create(input);
 
-    return { webhook: newWebhook, created: true };
+    return { webhook: newWebhook, created: true, conflict: false};
   }
 }

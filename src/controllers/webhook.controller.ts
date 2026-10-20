@@ -16,6 +16,9 @@ export class WebhookController {
       payload: body.payload,
       idempotencyKey,
     });
+    if (result.conflict){
+      return res.status(409).json({"error":"Idempotency-Key already used with a different request body"})
+    }
 
     if (result.created) {
       return res.status(201).json(result.webhook);
