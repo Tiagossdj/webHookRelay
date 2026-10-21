@@ -21,9 +21,10 @@ export class WebhookRepository {
         payload: data.payload,
         idempotency_key: data.idempotencyKey,   
         status: 'pending',
-    })
+    }) 
+    .onConflictDoNothing({target: webhooks.idempotency_key}) 
     .returning()
 
-    return result[0]
+    return result[0] ?? null
   }
 }

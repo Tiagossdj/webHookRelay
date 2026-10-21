@@ -12,7 +12,6 @@ export class WebhookService {
       input.idempotencyKey,
     );
     if (existing) {
-
       if (input.url === existing.url_destiny) {
         if (
           JSON.stringify(input.payload) === JSON.stringify(existing.payload)
@@ -30,6 +29,21 @@ export class WebhookService {
 
     const newWebhook = await WebhookRepository.create(input);
 
-    return { webhook: newWebhook, created: true, conflict: false};
+    if (!newWebhook) {
+      const winner = await WebhookRepository.findByIdempotencyKey(input.idempotencyKey);
+
+      if (input.url === winner.url_destiny) {
+        if (JSON.stringify(input.payload) === JSON.stringify(winner.payload)) {
+          return { webhook: winner, created: false, conflict: false };
+        }
+      }
+
+      return {
+        webhook: winner,
+        created: false,
+        conflict: true,
+      };
+    }
+    return { webhook: newWebhook, created: true, conflict: false };
   }
 }
