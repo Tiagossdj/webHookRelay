@@ -2,6 +2,8 @@ import { db } from "../db/index.js";
 import { webhooks } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 
+export type SavedWebhook = typeof webhooks.$inferSelect
+
 export class WebhookRepository {
   static async findByIdempotencyKey(key: string) {
     const result = await db
@@ -27,4 +29,5 @@ export class WebhookRepository {
 
     return result[0] ?? null
   }
+
 }
