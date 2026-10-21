@@ -1,3 +1,4 @@
+import { webhookQueue } from "../queue/webhook.queue.js";
 import { WebhookRepository } from "../repository/webhook.repository.js";
 import type { SavedWebhook } from "../repository/webhook.repository.js";
 
@@ -40,6 +41,8 @@ export class WebhookService {
         conflict: true,
       };
     }
+    await webhookQueue.add("webhook-delivery", { webhookId: newWebhook.id });
+
     return { webhook: newWebhook, created: true, conflict: false };
   }
 
