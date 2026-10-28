@@ -9,7 +9,7 @@ interface WebhookJobData {
 const worker = new Worker<WebhookJobData>(
   "webhook-delivery",
   async (job) => {
-    await WebhookService.deliver(job.data.webhookId, job.attemptsMade + 1);
+    await WebhookService.deliver(job.data.webhookId, job.attemptsMade + 1, job.opts.attempts ?? 1);
   },
   { connection, autorun: false },
 );

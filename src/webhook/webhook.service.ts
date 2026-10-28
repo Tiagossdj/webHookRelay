@@ -53,7 +53,11 @@ export class WebhookService {
     );
   }
 
-  static async deliver(webhookId: number, attemptNumber: number) {
+  static async deliver(
+    webhookId: number,
+    attemptNumber: number,
+    maxAttempts: number,
+  ) {
     const webhook = await WebhookRepository.findById(webhookId);
 
     if (!webhook) return console.log(`Sem registro de ID: ${webhookId}`);
@@ -67,26 +71,21 @@ export class WebhookService {
         body: JSON.stringify(webhook.payload),
       });
 
-      res =  response
+      res = response;
       
     } catch (error) {
-      await WebhookRepository.createDeliveryAttempt({
-        webhook_id: webhook.id,
-        attempt_number: attemptNumber,
-        status: "failed",
-        http_code: null,
-      });
+      await this.registerFailure(webhookId, attemptNumber, maxAttempts, null);
 
       throw new Error(`Error: ${error}`);
     }
 
     if (!res.ok) {
-      await WebhookRepository.createDeliveryAttempt({
-        webhook_id: webhook.id,
-        attempt_number: attemptNumber,
-        status: "failed",
-        http_code: res.status,
-      });
+      await this.registerFailure(
+        webhookId,
+        attemptNumber,
+        maxAttempts,
+        res.status,
+      );
 
       throw new Error(`Error HTTP! status: ${res.status}`);
     }
@@ -99,5 +98,23 @@ export class WebhookService {
     });
 
     await WebhookRepository.updateStatus(webhookId, "delivered");
+  }
+
+  private static async registerFailure(
+    webhookId: number,
+    attemptNumber: number,
+    maxAttempts: number,
+    httpCode: number | null,
+  ) {
+    await WebhookRepository.createDeliveryAttempt({
+      webhook_id: webhookId,
+      attempt_number: attemptNumber,
+      status: "failed",
+      http_code: httpCode,
+    });
+
+    if (attemptNumber === maxAttempts) {
+      await WebhookRepository.updateStatus(webhookId, "failed");
+    }
   }
 }

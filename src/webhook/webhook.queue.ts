@@ -8,4 +8,8 @@ export const connection = new Redis(env.REDIS_URL, {
 
 export const webhookQueue = new Queue("webhook-delivery", {
   connection,
+  defaultJobOptions: {
+    attempts: 5,
+    backoff: { type: "exponential", delay: 1000 },
+  },
 });
