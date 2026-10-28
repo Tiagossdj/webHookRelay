@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
-import { WebhookService } from "../services/webhook.service.js";
-import type { CreateWebhookBody } from "../schemas/webhook.schema.js";
+import { WebhookService } from "../webhook/webhook.service.js";
+import type { CreateWebhookBody } from "../webhook/webhook.schema.js";
 
 export class WebhookController {
   static async create(
@@ -16,8 +16,12 @@ export class WebhookController {
       payload: body.payload,
       idempotencyKey,
     });
-    if (result.conflict){
-      return res.status(409).json({"error":"Idempotency-Key already used with a different request body"})
+    if (result.conflict) {
+      return res
+        .status(409)
+        .json({
+          error: "Idempotency-Key already used with a different request body",
+        });
     }
 
     if (result.created) {

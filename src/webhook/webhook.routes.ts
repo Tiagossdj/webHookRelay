@@ -1,7 +1,10 @@
 import { Router } from "express";
-import { WebhookController } from "../controllers/webhook.controller.js";
+import { WebhookController } from "./webhook.controller.js";
 import { validate } from "../middlewares/validate.js";
-import { createWebhookBody, createWebhookHeaders } from "../schemas/webhook.schema.js";
+import {
+  createWebhookBody,
+  createWebhookHeaders,
+} from "./webhook.schema.js";
 
 export const webhookRoutes = Router();
 

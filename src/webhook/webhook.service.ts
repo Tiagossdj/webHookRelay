@@ -1,6 +1,6 @@
-import { webhookQueue } from "../queue/webhook.queue.js";
-import { WebhookRepository } from "../repository/webhook.repository.js";
-import type { SavedWebhook } from "../repository/webhook.repository.js";
+import { webhookQueue } from "./webhook.queue.js";
+import { WebhookRepository } from "./webhook.repository.js";
+import type { SavedWebhook } from "./webhook.repository.js";
 
 interface CreateWebhookInput {
   url: string;

@@ -1,6 +1,6 @@
 import express from "express";
 import { pinoHttp } from "pino-http";
-import { webhookRoutes } from "./routes/webhook.routes.js";
+import { webhookRoutes } from "./webhook/webhook.routes.js";
 import { errorHandler } from "./middlewares/error-handler.js";
 
 const isDev = process.env.NODE_ENV !== "production";
