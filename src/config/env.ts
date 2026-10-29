@@ -14,5 +14,7 @@ export const env = {
     DATABASE_URL: required('DATABASE_URL'),
     REDIS_URL: required('REDIS_URL'),
     WEBHOOK_SECRET: required('WEBHOOK_SECRET'),
-    DELIVERY_TIMEOUT_MS: Number(process.env.DELIVERY_TIMEOUT_MS ?? 10000)
+    DELIVERY_TIMEOUT_MS: Number(process.env.DELIVERY_TIMEOUT_MS ?? 10000),
+    DELIVERY_ATTEMPTS: Number(process.env.DELIVERY_ATTEMPTS ?? 5),
+    DELIVERY_BACKOFF_MS: Number(process.env.DELIVERY_BACKOFF_MS ?? 1000)
 }
