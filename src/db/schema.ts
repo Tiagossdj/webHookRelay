@@ -1,4 +1,4 @@
-import { timestamp, integer, pgEnum, pgTable, varchar, json } from "drizzle-orm/pg-core";
+import { timestamp, integer, pgEnum, pgTable, varchar, json, index } from "drizzle-orm/pg-core";
 
 export const webhook_status = pgEnum("webhook_status", [
   "pending",
@@ -24,4 +24,7 @@ export const deliveryAttempts = pgTable("delivery_attempts", {
   status: attemptStatus().notNull(),
   http_code: integer(),
   attempted_at: timestamp().defaultNow().notNull(),
-});
+}, (table) => [
+  // Postgres não cria índice automático para foreign keys
+  index("delivery_attempts_webhook_id_idx").on(table.webhook_id),
+]);
