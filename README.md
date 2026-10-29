@@ -362,43 +362,71 @@ Cada entrega chega ao destino com:
 
 | Header | Conteúdo |
 |---|---|
-| `X-Webhook-Id` | id do webhook (útil para o destino descartar duplicatas) |
-| `X-Webhook-Timestamp` | Unix timestamp (segundos) do envio |
-| `X-Webhook-Signature` | `sha256=` + HMAC-SHA256 de `"<timestamp>.<body>"` com o `WEBHOOK_SECRET` |
+| `X-Webhook-Id` | id do webhook. **Igual em todas as tentativas** do mesmo webhook: use para descartar duplicatas |
+| `X-Webhook-Timestamp` | Unix timestamp **em segundos** (inteiro) do envio. Muda a cada tentativa |
+| `X-Webhook-Signature` | `sha256=` + HMAC-SHA256 em **hex minúsculo** de `"<timestamp>.<body>"`, com o `WEBHOOK_SECRET` |
 
 Exemplo do lado de quem recebe (Node/Express):
 
 ```ts
+import express from "express";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-app.post("/webhooks", express.text({ type: "application/json" }), (req, res) => {
-  const timestamp = Number(req.header("X-Webhook-Timestamp"));
+const SECRET = process.env.WEBHOOK_SECRET;
+if (!SECRET) throw new Error("WEBHOOK_SECRET não definido");
+
+const processedIds = new Set<string>(); // em produção: tabela com unique no id
+
+// Registre ANTES de um app.use(express.json()) global: se o json parser rodar
+// primeiro, req.body vira objeto e a assinatura nunca bate
+app.post("/webhooks", express.raw({ type: "application/json" }), (req, res) => {
+  const tsHeader = req.header("X-Webhook-Timestamp") ?? "";
   const received = req.header("X-Webhook-Signature") ?? "";
+  const timestamp = Number(tsHeader);
 
-  // Rejeita requisições antigas (replay)
-  if (Math.abs(Date.now() / 1000 - timestamp) > 300) return res.sendStatus(400);
+  // Header ausente/inválido vira NaN, e NaN > 300 é false: checar isFinite antes
+  if (!Number.isFinite(timestamp) || Math.abs(Date.now() / 1000 - timestamp) > 300) {
+    return res.sendStatus(400);
+  }
+  if (!Buffer.isBuffer(req.body)) return res.sendStatus(400);
 
-  // Usa o body BRUTO: um JSON.parse/stringify pode mudar a string e invalidar a assinatura
-  const expected = "sha256=" + createHmac("sha256", process.env.WEBHOOK_SECRET!)
-    .update(`${timestamp}.${req.body}`)
+  const expected = "sha256=" + createHmac("sha256", SECRET)
+    .update(`${tsHeader}.`) // string original do header, não o número reconvertido
+    .update(req.body)       // bytes exatos que foram assinados
     .digest("hex");
 
-  const valid =
-    expected.length === received.length &&
-    timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+  // Compara o tamanho em BYTES: timingSafeEqual lança erro se forem diferentes
+  // (uma assinatura com "é" pode ter os mesmos caracteres e mais bytes)
+  const a = Buffer.from(expected);
+  const b = Buffer.from(received);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return res.sendStatus(401);
 
-  if (!valid) return res.sendStatus(401);
+  // Retries e replays dentro da janela de 5 min chegam com o mesmo X-Webhook-Id
+  const webhookId = req.header("X-Webhook-Id")!;
+  if (processedIds.has(webhookId)) return res.sendStatus(200);
+
+  let event: unknown;
+  try {
+    event = JSON.parse(req.body.toString("utf8"));
+  } catch {
+    return res.sendStatus(400);
+  }
+
+  // ... processa o event ...
+  processedIds.add(webhookId);
   res.sendStatus(200);
 });
 ```
 
-A mesma lógica está em [`src/webhook/webhook.signature.ts`](src/webhook/webhook.signature.ts) (`verifySignature`).
+> Responda `2xx` também para duplicatas: qualquer outro status faz o relay tentar de novo.
+
+A mesma comparação está em [`src/webhook/webhook.signature.ts`](src/webhook/webhook.signature.ts) (`verifySignature`), que aceita o timestamp como a string bruta do header.
 
 ---
 
 ## Testes
 
-**38 testes em 3 projetos Vitest · ~94% de cobertura de linhas.**
+**41 testes em 3 projetos Vitest · ~94% de cobertura de linhas.**
 
 ```bash
 docker compose up -d postgres redis
@@ -407,7 +435,7 @@ pnpm test
 
 Integração e e2e usam **bancos próprios** (`webhookrelay_test` e `webhookrelay_test_e2e`) e **databases Redis próprios** (1 e 2), criados e migrados automaticamente pelo global setup. O banco de desenvolvimento nunca é tocado, e os dois projetos podem rodar em paralelo sem um apagar os dados do outro.
 
-### Unitários — `tests/unit/` (20)
+### Unitários — `tests/unit/` (23)
 
 `WebhookService` isolado, com repository, fila e `fetch` mockados:
 
@@ -417,7 +445,7 @@ Integração e e2e usam **bancos próprios** (`webhookrelay_test` e `webhookrela
 - ✅ `deliver`: 2xx → `delivered`; 4xx/5xx → tentativa com `http_code` e erro para retry; sem resposta → `http_code: null`
 - ✅ Última tentativa marca `failed`; webhook inexistente → `UnrecoverableError`
 - ✅ Headers de entrega com **assinatura HMAC válida** e `AbortSignal` de timeout
-- ✅ `signPayload` / `verifySignature`: segredo errado, body alterado, replay com outro timestamp, tamanho diferente
+- ✅ `signPayload` / `verifySignature`: segredo errado, body alterado, replay com outro timestamp, tamanho diferente, **assinatura multibyte com o mesmo número de caracteres** (não lança erro), timestamp como string bruta do header
 
 ### Integração — `tests/integration/` (14)
 
