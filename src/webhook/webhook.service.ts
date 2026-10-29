@@ -1,3 +1,4 @@
+import { UnrecoverableError } from "bullmq";
 import { webhookQueue } from "./webhook.queue.js";
 import { WebhookRepository } from "./webhook.repository.js";
 import type { SavedWebhook } from "./webhook.repository.js";
@@ -69,7 +70,10 @@ export class WebhookService {
   ) {
     const webhook = await WebhookRepository.findById(webhookId);
 
-    if (!webhook) return console.log(`Sem registro de ID: ${webhookId}`);
+    // Tentar de novo não faz o webhook aparecer: falha sem retry
+    if (!webhook) {
+      throw new UnrecoverableError(`Webhook ${webhookId} not found`);
+    }
 
     let res: Response;
 
