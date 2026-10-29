@@ -46,4 +46,25 @@ describe("webhook signature", () => {
   it("rejects a signature with a different length without throwing", () => {
     expect(verifySignature(body, timestamp, "sha256=abc", secret)).toBe(false);
   });
+
+  it("rejects a multibyte signature with the same character count without throwing", () => {
+    // Mesmo número de caracteres que uma assinatura real, mas "é" ocupa 2 bytes
+    const multibyte = `sha256=${"é".repeat(64)}`;
+    expect(multibyte.length).toBe(signPayload(body, timestamp, secret).length);
+
+    expect(verifySignature(body, timestamp, multibyte, secret)).toBe(false);
+  });
+
+  it("accepts the raw timestamp header string", () => {
+    const signature = signPayload(body, timestamp, secret);
+
+    expect(verifySignature(body, String(timestamp), signature, secret)).toBe(true);
+  });
+
+  it("signs the timestamp text as received, so a reformatted value does not match", () => {
+    const signature = signPayload(body, "1700000000.0", secret);
+
+    expect(verifySignature(body, "1700000000.0", signature, secret)).toBe(true);
+    expect(verifySignature(body, 1_700_000_000, signature, secret)).toBe(false);
+  });
 });
