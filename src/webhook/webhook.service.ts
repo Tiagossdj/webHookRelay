@@ -1,4 +1,5 @@
 import { UnrecoverableError } from "bullmq";
+import { env } from "../config/env.js";
 import { webhookQueue } from "./webhook.queue.js";
 import { WebhookRepository } from "./webhook.repository.js";
 import type { SavedWebhook } from "./webhook.repository.js";
@@ -82,6 +83,8 @@ export class WebhookService {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(webhook.payload),
+        // Destino lento não pode prender o worker: estoura e cai no catch (caso A)
+        signal: AbortSignal.timeout(env.DELIVERY_TIMEOUT_MS),
       });
 
       res = response;

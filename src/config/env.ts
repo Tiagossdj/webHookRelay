@@ -12,5 +12,6 @@ export const env = {
     NODE_ENV: process.env.NODE_ENV ?? 'development',
     PORT: Number(process.env.PORT ?? 3000), 
     DATABASE_URL: required('DATABASE_URL'),
-    REDIS_URL: required('REDIS_URL')
+    REDIS_URL: required('REDIS_URL'),
+    DELIVERY_TIMEOUT_MS: Number(process.env.DELIVERY_TIMEOUT_MS ?? 10000)
 }
