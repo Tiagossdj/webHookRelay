@@ -1,5 +1,6 @@
 import 'dotenv/config'
 
+/** Lê uma variável obrigatória; derruba o processo na inicialização se estiver faltando. */
 function required(key: string) : string {
     const value = process.env[key]
     if (!value){
@@ -8,6 +9,7 @@ function required(key: string) : string {
     return value
 }
 
+/** Configuração tipada a partir do `.env` (veja `.env.example`). */
 export const env = {
     NODE_ENV: process.env.NODE_ENV ?? 'development',
     PORT: Number(process.env.PORT ?? 3000), 

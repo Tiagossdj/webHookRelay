@@ -3,10 +3,16 @@ import { connection, webhookQueue } from "./webhook/webhook.queue.js";
 import { client } from "./db/index.js";
 import { WebhookService } from "./webhook/webhook.service.js";
 
+/** Formato de `job.data`: o que o service enfileira em `create`. */
 interface WebhookJobData {
   webhookId: number;
 }
 
+/**
+ * Worker de entregas (processo separado da API).
+ * Para cada job chama `WebhookService.deliver`; se ela lançar erro,
+ * o BullMQ agenda o retry conforme a política da fila.
+ */
 const worker = new Worker<WebhookJobData>(
   "webhook-delivery",
   async (job) => {

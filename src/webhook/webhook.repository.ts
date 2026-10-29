@@ -2,9 +2,12 @@ import { db } from "../db/index.js";
 import { deliveryAttempts, webhooks } from "../db/schema.js";
 import { asc, eq } from "drizzle-orm";
 
+/** Linha da tabela `webhooks` como o Drizzle devolve num SELECT. */
 export type SavedWebhook = typeof webhooks.$inferSelect;
 
+/** Acesso ao Postgres via Drizzle: uma query por método, sem regra de negócio. */
 export class WebhookRepository {
+  /** @returns o webhook com essa Idempotency-Key ou `null`. */
   static async findByIdempotencyKey(key: string) {
     const result = await db
       .select()
@@ -15,6 +18,11 @@ export class WebhookRepository {
     return result[0] ?? null;
   }
 
+  /**
+   * Insere um webhook com status `pending`.
+   * @returns a linha criada, ou `null` se a key já existia (ON CONFLICT DO NOTHING:
+   * outra requisição venceu a corrida).
+   */
   static async create(data: {
     url: string;
     payload: unknown;
@@ -34,6 +42,7 @@ export class WebhookRepository {
     return result[0] ?? null;
   }
 
+  /** @returns o webhook com esse id ou `null`. */
   static async findById(id: number) {
     const result = await db
       .select()
@@ -44,6 +53,10 @@ export class WebhookRepository {
     return result[0] ?? null
   }
 
+  /**
+   * Atualiza o status do webhook.
+   * @returns a linha atualizada ou `null` se o id não existe.
+   */
   static async updateStatus(id: number, status: SavedWebhook['status'] ) {
     const result = await db
       .update(webhooks)
@@ -54,6 +67,7 @@ export class WebhookRepository {
     return result[0] ?? null;
   }
 
+  /** Registra uma tentativa de entrega (sucesso ou falha) no histórico. */
   static async createDeliveryAttempt(
     data: {
       webhook_id: number;
@@ -74,6 +88,7 @@ export class WebhookRepository {
     return result[0] ?? null 
   }
 
+  /** Lista as tentativas de um webhook em ordem de `attempt_number` (usa o índice em `webhook_id`). */
   static async findAttemptsByWebhookId(webhookId: number) {
     return db
       .select()

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 
+/** Schemas zod opcionais para cada parte da requisição. */
 interface RequestSchemas {
   body?: z.ZodType;
   headers?: z.ZodType;
@@ -8,6 +9,14 @@ interface RequestSchemas {
   query?: z.ZodType;
 }
 
+/**
+ * Middleware que valida a requisição com zod antes do controller.
+ * Junta os erros de todas as partes e responde 400 de uma vez.
+ * Em caso de sucesso, grava em `req.body`/`req.params` os valores já convertidos
+ * (ex.: `z.coerce`). `query` não é regravado porque no Express 5 é um getter.
+ *
+ * @example validate({ body: createWebhookBody, headers: createWebhookHeaders })
+ */
 export function validate(schemas: RequestSchemas) {
   return (req: Request, res: Response, next: NextFunction) => {
     const errors: Record<string, unknown> = {};

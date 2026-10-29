@@ -5,13 +5,31 @@ import { WebhookRepository } from "./webhook.repository.js";
 import { signPayload } from "./webhook.signature.js";
 import type { SavedWebhook } from "./webhook.repository.js";
 
+/** Dados de entrada já validados pelo controller para registrar um webhook. */
 interface CreateWebhookInput {
+  /** URL de destino que vai receber o POST. */
   url: string;
+  /** Corpo JSON repassado ao destino sem alteração. */
   payload: unknown;
+  /** Valor do header Idempotency-Key enviado pelo cliente. */
   idempotencyKey: string;
 }
 
+/**
+ * Regras de negócio dos webhooks: registro idempotente, consulta e entrega.
+ * Não conhece HTTP (Express) nem SQL; fala com o repository e com a fila.
+ */
 export class WebhookService {
+  /**
+   * Registra um webhook de forma idempotente e enfileira a entrega.
+   *
+   * - key nova → cria e enfileira `{ webhookId }` (`created: true`)
+   * - mesma key e mesmo body → devolve o original (`created: false`)
+   * - mesma key e body diferente → `conflict: true` (controller responde 409)
+   *
+   * Requisições simultâneas com a mesma key: o insert usa ON CONFLICT DO NOTHING;
+   * quem perde a corrida busca o registro vencedor e segue as mesmas regras.
+   */
   static async create(input: CreateWebhookInput) {
     const existing = await WebhookRepository.findByIdempotencyKey(
       input.idempotencyKey,
@@ -49,6 +67,10 @@ export class WebhookService {
     return { webhook: newWebhook, created: true, conflict: false };
   }
 
+  /**
+   * Busca um webhook com o histórico de tentativas ordenado por `attempt_number`.
+   * @returns o webhook com `attempts` (lista vazia se ainda não houve tentativa) ou `null` se não existir.
+   */
   static async getById(id: number) {
     const webhook = await WebhookRepository.findById(id);
     if (!webhook) return null;
@@ -58,6 +80,7 @@ export class WebhookService {
     return { ...webhook, attempts };
   }
 
+  /** Compara url e payload para decidir entre replay (200) e conflito (409). */
   private static isSameRequest(input: CreateWebhookInput, saved: SavedWebhook) {
     return (
       input.url === saved.url_destiny &&
@@ -65,6 +88,20 @@ export class WebhookService {
     );
   }
 
+  /**
+   * Faz uma tentativa de entrega (chamado pelo worker a cada execução do job).
+   *
+   * Envia POST assinado (headers `X-Webhook-Id`, `X-Webhook-Timestamp`,
+   * `X-Webhook-Signature`) com timeout e grava a tentativa em `delivery_attempts`.
+   * Em 2xx marca o webhook como `delivered`. Em falha grava a tentativa e lança
+   * erro para o BullMQ agendar o retry; na última tentativa marca `failed`.
+   *
+   * @param webhookId id do webhook no Postgres (vem de `job.data`).
+   * @param attemptNumber número desta tentativa, começando em 1 (`job.attemptsMade + 1`).
+   * @param maxAttempts total de tentativas configurado no job (`job.opts.attempts`).
+   * @throws {UnrecoverableError} se o webhook não existe (falha sem retry).
+   * @throws {Error} se não houve resposta (rede/timeout) ou o status não é 2xx.
+   */
   static async deliver(
     webhookId: number,
     attemptNumber: number,
@@ -126,6 +163,10 @@ export class WebhookService {
     await WebhookRepository.updateStatus(webhookId, "delivered");
   }
 
+  /**
+   * Grava a tentativa como `failed` e, se era a última, marca o webhook como `failed`.
+   * @param httpCode status recebido, ou `null` quando o destino não respondeu.
+   */
   private static async registerFailure(
     webhookId: number,
     attemptNumber: number,
