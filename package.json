@@ -1,17 +1,21 @@
 {
   "name": "webhookrelay",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Reliable webhook delivery service: idempotent ingestion, queue-based delivery with retries and exponential backoff",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/server.js",
+    "start:worker": "node dist/worker.js",
     "dev": "tsx watch src/server.ts",
-    "worker": "tsx watch src/worker.ts"
+    "worker": "tsx watch src/worker.ts",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Tiago Silvino",
+  "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.29.2",
   "devDependencies": {
@@ -27,7 +31,6 @@
     "dotenv": "^18.0.5",
     "drizzle-orm": "^0.45.3",
     "express": "^5.3.0",
-    "fastify-type-provider-zod": "^7.0.0",
     "ioredis": "^6.0.0",
     "pino-http": "^11.0.0",
     "postgres": "^3.4.9",
