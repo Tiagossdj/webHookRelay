@@ -1,6 +1,6 @@
 import { db } from "../db/index.js";
 import { deliveryAttempts, webhooks } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 export type SavedWebhook = typeof webhooks.$inferSelect;
 
@@ -72,5 +72,13 @@ export class WebhookRepository {
     .returning()
 
     return result[0] ?? null 
+  }
+
+  static async findAttemptsByWebhookId(webhookId: number) {
+    return db
+      .select()
+      .from(deliveryAttempts)
+      .where(eq(deliveryAttempts.webhook_id, webhookId))
+      .orderBy(asc(deliveryAttempts.attempt_number));
   }
 }

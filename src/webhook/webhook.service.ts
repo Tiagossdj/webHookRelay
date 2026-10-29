@@ -46,6 +46,15 @@ export class WebhookService {
     return { webhook: newWebhook, created: true, conflict: false };
   }
 
+  static async getById(id: number) {
+    const webhook = await WebhookRepository.findById(id);
+    if (!webhook) return null;
+
+    const attempts = await WebhookRepository.findAttemptsByWebhookId(id);
+
+    return { ...webhook, attempts };
+  }
+
   private static isSameRequest(input: CreateWebhookInput, saved: SavedWebhook) {
     return (
       input.url === saved.url_destiny &&

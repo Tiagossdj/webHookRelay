@@ -24,6 +24,7 @@ export function validate(schemas: RequestSchemas) {
 
       // No Express 5 req.query é um getter, então não pode ser reatribuído
       if (key === "body") req.body = result.data;
+      if (key === "params") req.params = result.data as Request['params']
     }
 
     if (Object.keys(errors).length > 0) {

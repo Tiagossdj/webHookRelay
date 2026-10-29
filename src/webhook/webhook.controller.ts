@@ -30,4 +30,15 @@ export class WebhookController {
       return res.status(200).json(result.webhook);
     }
   }
+
+  static async getById(req: Request<{ id: string }>, res: Response) {
+    // validate já garantiu inteiro >= 1; o Express tipa params como string
+    const webhook = await WebhookService.getById(Number(req.params.id));
+
+    if (!webhook) {
+      return res.status(404).json({ error: "Webhook not found" });
+    }
+
+    return res.status(200).json(webhook);
+  }
 }
