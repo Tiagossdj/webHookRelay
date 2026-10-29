@@ -1,12 +1,11 @@
 import { defineConfig } from "vitest/config";
-import { TEST_DATABASE_URL, TEST_REDIS_URL } from "./tests/helpers/test-env.js";
+import { testServices } from "./tests/helpers/test-env.js";
 
 // Variáveis lidas pelo src/config/env.ts. O dotenv não sobrescreve
 // o que já está em process.env, então estes valores vencem o .env
 const env = {
   NODE_ENV: "test",
-  DATABASE_URL: TEST_DATABASE_URL,
-  REDIS_URL: TEST_REDIS_URL,
+  ...testServices.integration,
   WEBHOOK_SECRET: "test-secret",
   DELIVERY_TIMEOUT_MS: "1000",
   DELIVERY_ATTEMPTS: "3",
@@ -39,6 +38,8 @@ export default defineConfig({
         test: {
           name: "e2e",
           include: ["tests/e2e/**/*.test.ts"],
+          // Banco e Redis próprios: roda em paralelo com a integração sem conflito
+          env: { ...env, ...testServices.e2e },
           globalSetup: ["tests/helpers/global-setup.ts"],
           fileParallelism: false,
           testTimeout: 20000,
