@@ -1,11 +1,38 @@
+# Variáveis comuns a migrate, app e worker (hosts = nomes dos serviços na rede do compose)
+x-app-env: &app-env
+    NODE_ENV: production
+    DATABASE_URL: postgresql://docker:docker@postgres:5432/webhookrelay
+    REDIS_URL: redis://redis:6379
+    WEBHOOK_SECRET: ${WEBHOOK_SECRET:?WEBHOOK_SECRET must be set in .env}
+
 services:
+    migrate:
+        build: .
+        image: webhookrelay:local
+        command: ["node", "dist/db/migrate.js"]
+        environment: *app-env
+        depends_on:
+            postgres:
+                condition: service_healthy
+
     app:
         build: .
+        image: webhookrelay:local
         ports:
             - "3000:3000"
-        depends_on:
-            - postgres
-            - redis
+        environment: *app-env
+        depends_on: &app-deps
+            migrate:
+                condition: service_completed_successfully
+            redis:
+                condition: service_healthy
+
+    worker:
+        build: .
+        image: webhookrelay:local
+        command: ["node", "dist/worker.js"]
+        environment: *app-env
+        depends_on: *app-deps
 
     postgres:
         image: postgres:16-alpine
@@ -15,8 +42,23 @@ services:
             POSTGRES_DB: webhookrelay
         ports:
             - "5432:5432"
-    
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U docker -d webhookrelay"]
+            interval: 2s
+            timeout: 5s
+            retries: 15
+
     redis:
         image: redis:7-alpine
         ports:
             - "6379:6379"
+        healthcheck:
+            test: ["CMD", "redis-cli", "ping"]
+            interval: 2s
+            timeout: 5s
+            retries: 15
+
+volumes:
+    pgdata:

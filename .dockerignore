@@ -1,5 +1,12 @@
-node_modules 
+node_modules
 dist
+coverage
 .git
+.env
+.env.*
+!.env.example
+dockerfile
 .dockerignore
-Dockerfile
+docker-compose.yml
+modelo.md
+CLAUDE.md
