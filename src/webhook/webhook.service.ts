@@ -2,6 +2,7 @@ import { UnrecoverableError } from "bullmq";
 import { env } from "../config/env.js";
 import { webhookQueue } from "./webhook.queue.js";
 import { WebhookRepository } from "./webhook.repository.js";
+import { signPayload } from "./webhook.signature.js";
 import type { SavedWebhook } from "./webhook.repository.js";
 
 interface CreateWebhookInput {
@@ -76,13 +77,22 @@ export class WebhookService {
       throw new UnrecoverableError(`Webhook ${webhookId} not found`);
     }
 
+    // Mesma string no body e na assinatura, senão o destino não confere
+    const body = JSON.stringify(webhook.payload);
+    const timestamp = Math.floor(Date.now() / 1000);
+
     let res: Response;
 
     try {
       const response = await fetch(webhook.url_destiny, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(webhook.payload),
+        headers: {
+          "Content-Type": "application/json",
+          "X-Webhook-Id": String(webhook.id),
+          "X-Webhook-Timestamp": String(timestamp),
+          "X-Webhook-Signature": signPayload(body, timestamp, env.WEBHOOK_SECRET),
+        },
+        body,
         // Destino lento não pode prender o worker: estoura e cai no catch (caso A)
         signal: AbortSignal.timeout(env.DELIVERY_TIMEOUT_MS),
       });

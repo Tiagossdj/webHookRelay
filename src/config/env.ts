@@ -13,5 +13,6 @@ export const env = {
     PORT: Number(process.env.PORT ?? 3000), 
     DATABASE_URL: required('DATABASE_URL'),
     REDIS_URL: required('REDIS_URL'),
+    WEBHOOK_SECRET: required('WEBHOOK_SECRET'),
     DELIVERY_TIMEOUT_MS: Number(process.env.DELIVERY_TIMEOUT_MS ?? 10000)
 }
